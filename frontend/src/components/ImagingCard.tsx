@@ -28,11 +28,10 @@ export function ImagingCard({ onResult }: { onResult: (r: VisionResult) => void 
     <button
       key={k}
       onClick={() => setTab(k)}
-      className={`btn btn-sm ${tab === k ? "btn-primary" : "btn-ghost"} btn-wrap`}
+      className={`btn btn-sm ${tab === k ? "btn-primary" : "btn-ghost"} btn-wrap flex items-center justify-center`}
       title={label}
     >
-      {k === "cxr" ? <ImageIcon className="btn-icon" size={14} /> : <Syringe className="btn-icon" size={14} />}
-      <span className="btn-label">{label}</span>
+      <span className="btn-label leading-none">{label}</span>
     </button>
   );
 
@@ -40,7 +39,7 @@ export function ImagingCard({ onResult }: { onResult: (r: VisionResult) => void 
     <div className="space-y-3">
       <div className="pillbar no-scrollbar">
         {tabBtn("cxr", "Chest X-Ray")}
-        {tabBtn("burn", "Burn")}
+        {tabBtn("burn", "Burn Wound Image")}
       </div>
 
       <FilePicker

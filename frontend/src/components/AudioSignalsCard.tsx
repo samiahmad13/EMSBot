@@ -51,7 +51,7 @@ export function AudioSignalsCard({
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-      <Box title="ECG">
+      <Box title="Electrocardiogram (ECG)">
         <FilePicker accept=".csv,.wav,.mat" file={ecg} onSelect={setECG} buttonLabel="Choose file" compact />
         <button className="btn btn-ghost btn-block btn-wrap mt-2" onClick={() => ecg && send(ecg, "ecg")}>
           {ecgUp.loading ? "Analyzing..." : "Analyze"}
@@ -60,7 +60,7 @@ export function AudioSignalsCard({
         {ecgUp.error && <div className="mt-1 text-rose-300 text-sm">{ecgUp.error}</div>}
       </Box>
 
-      <Box title="Lung">
+      <Box title="Lung Auscultation">
         <FilePicker accept="audio/*" file={lung} onSelect={setLung} buttonLabel="Choose audio" compact />
         <button className="btn btn-ghost btn-block btn-wrap mt-2" onClick={() => lung && send(lung, "lung")}>
           {lungUp.loading ? "Analyzing..." : "Analyze"}
@@ -69,7 +69,7 @@ export function AudioSignalsCard({
         {lungUp.error && <div className="mt-1 text-rose-300 text-sm">{lungUp.error}</div>}
       </Box>
 
-      <Box title="Heart">
+      <Box title="Heart Auscultation">
         <FilePicker accept="audio/*" file={heart} onSelect={setHeart} buttonLabel="Choose audio" compact />
         <button className="btn btn-ghost btn-block btn-wrap mt-2" onClick={() => heart && send(heart, "heart")}>
           {heartUp.loading ? "Analyzing..." : "Analyze"}

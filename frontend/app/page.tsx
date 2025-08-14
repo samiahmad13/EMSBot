@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Activity, HeartPulse, Hospital, Lock, ShieldCheck } from "lucide-react";
+import { ClipboardPlus, Image, HeartPulse, Ambulance, Activity } from "lucide-react";
 import { ImagingCard } from "@/src/components/ImagingCard";
 import { AudioSignalsCard } from "@/src/components/AudioSignalsCard";
 import { RiskPanel } from "@/src/components/RiskPanel";
@@ -18,11 +18,11 @@ export default function Page() {
       <header className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="grid h-10 w-10 place-items-center rounded-2xl bg-cyan-400 text-slate-900 shadow-lg shadow-cyan-500/20">
-            <Hospital size={20} />
+            <Ambulance size={32} />
           </div>
           <div>
             <h1 className="text-xl font-semibold">EMSBot</h1>
-            <p className="kicker">ML assistant for Emergency medical care</p>
+            <p className="kicker">ML assistant for Emergency medical providers</p>
           </div>
         </div>
       </header>
@@ -30,8 +30,7 @@ export default function Page() {
       {/* Imaging*/}
       <section className="mx-auto w-full max-w-5xl">
         <div className="card p-4">
-          <div className="section-title"><Activity size={16}/> Imaging</div>
-          <p className="mt-1 text-xs text-slate-400">Chest X-Ray • Burn</p>
+          <div className="section-title"><Image size={16}/> Imaging</div>
           <div className="mt-4">
             <ImagingCard onResult={(r)=>setImagingRes(r)} />
           </div>
@@ -42,7 +41,6 @@ export default function Page() {
       <section className="mx-auto mt-6 w-full max-w-5xl">
         <div className="card p-4">
           <div className="section-title"><HeartPulse size={16}/> Signals & Auscultation</div>
-          <p className="mt-1 text-xs text-slate-400">ECG • Lung • Heart</p>
           <div className="mt-4">
             <AudioSignalsCard
               onECG={(r)=>setOtherRes(r)}
@@ -56,19 +54,17 @@ export default function Page() {
       {/* Clinical Documentation Analysis*/}
       <section className="mx-auto mt-6 w-full max-w-5xl">
         <div className="card p-4">
-          <div className="section-title"><Lock size={16}/> Clinical Documentation Analysis</div>
-          <p className="mt-1 text-xs text-slate-400">Diagnosis • Treatment</p>
+          <div className="section-title"><ClipboardPlus size={16}/> Patient Documentation Analysis</div>
           <div className="mt-4">
             <ReportProcessor onResult={(r)=>setOtherRes(r)} />
           </div>
         </div>
       </section>
 
-      {/* Risk Scores (full row) */}
+      {/* Risk Scores*/}
       <section className="mt-6">
         <div className="card p-4">
-          <div className="section-title"><Lock size={16}/> Risk Scores</div>
-          <p className="mt-1 text-xs text-slate-400">Heart Disease • Diabetes • Stroke</p>
+          <div className="section-title"><Activity size={16}/> Disease Prediction</div>
           <div className="mt-4">
             <RiskPanel onResult={(r)=>setOtherRes(r)} />
           </div>

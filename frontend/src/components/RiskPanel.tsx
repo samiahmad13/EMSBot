@@ -79,7 +79,7 @@ function FieldInput({
             );
           })}
         </select>
-        <ScrollHint text={shown} />
+        <ScrollHint text={f.label} />
       </div>
     );
   }

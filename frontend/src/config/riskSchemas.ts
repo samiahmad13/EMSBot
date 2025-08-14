@@ -95,7 +95,7 @@ export const HEART_FAILURE_SCHEMA: RiskSchema = {
 
 //* DIABETES (BRFSS diabetes_binary)
 export const DIABETES_SCHEMA: RiskSchema = {
-  title: "Diabetes (BRFSS)",
+  title: "Diabetes",
   endpoint: "/api/risk/diabetes",
   fields: [
     { key: "HighBP", label: "High Blood Pressure (0 = No, 1 = Yes)", type: "number" },

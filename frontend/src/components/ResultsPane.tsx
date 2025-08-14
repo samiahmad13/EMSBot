@@ -172,7 +172,7 @@ export function ResultsPane({ imaging, others }:{ imaging?: AnyResult | null; ot
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       <div className="space-y-3">
-        <SectionHeader title="Imaging" onCopy={()=>copy("imaging", imaging)} copied={copied==="imaging"} />
+        <SectionHeader title="Imaging Results" onCopy={()=>copy("imaging", imaging)} copied={copied==="imaging"} />
         <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
           <SmartRenderer data={imaging} />
           <details className="mt-3">
@@ -183,7 +183,7 @@ export function ResultsPane({ imaging, others }:{ imaging?: AnyResult | null; ot
       </div>
 
       <div className="space-y-3">
-        <SectionHeader title="Risk / Signals / Audio / NLP" onCopy={()=>copy("others", others)} copied={copied==="others"} />
+        <SectionHeader title="Disease Prediction / Signals / Audio / Text Processing Results" onCopy={()=>copy("others", others)} copied={copied==="others"} />
         <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
           <SmartRenderer data={others} />
           <details className="mt-3">

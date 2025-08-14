@@ -27,7 +27,7 @@ export function ReportProcessor({ onResult }: { onResult: (r: NLPResult)=>void }
     <div className="space-y-3">
       <textarea
         className="textarea h-28"
-        placeholder="Paste a clinical note…"
+        placeholder="Enter patient history or case notes…"
         value={text}
         onChange={(e) => setText(e.target.value)}
       />

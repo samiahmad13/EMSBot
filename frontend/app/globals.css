@@ -50,9 +50,7 @@
 .btn .btn-icon {
   @apply shrink-0 mr-2;
 }
-.btn .btn-label {
-  @apply flex-1 min-w-0 break-words leading-snug self-start;
-}
+.btn .btn-label { @apply flex-1 min-w-0 break-words leading-snug self-center; }
 
 .field-label {
   @apply block mb-1 text-sm leading-snug text-slate-200 break-words;
