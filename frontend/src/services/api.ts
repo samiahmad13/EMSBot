@@ -1,5 +1,5 @@
 export async function postJSON<T>(path: string, payload: unknown): Promise<T> {
-  const url = path.startsWith("/") ? path : `/${path}`; // e.g. "/api/risk/heart-failure"
+  const url = path.startsWith("/") ? path : `/${path}`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

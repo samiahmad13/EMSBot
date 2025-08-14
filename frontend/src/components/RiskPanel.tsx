@@ -1,77 +1,171 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { postJSON } from "@/src/services/api";
 import { useUploader } from "@/src/hooks/useUploader";
 import type { RiskResult } from "@/src/types/model";
+import type { RiskSchema, Field, SelectOption } from "@/src/config/riskSchemas";
+import {
+  HEART_FAILURE_SCHEMA,
+  DIABETES_SCHEMA,
+  STROKE_SCHEMA,
+} from "@/src/config/riskSchemas";
 
-export function RiskPanel({ onResult }: { onResult: (r: RiskResult) => void }) {
-  const hf = useUploader<RiskResult>();
-  const dm = useUploader<RiskResult>();
-  const st = useUploader<RiskResult>();
+type Payload = Record<string, any>;
 
-  const [hfForm, setHF] = useState({ age:"", sex:"M", sbp:"", hr:"", bmi:"" });
-  const [dmForm, setDM] = useState({ age:"", bmi:"", glu:"", sbp:"" });
-  const [stForm, setST] = useState({ age:"", sex:"M", sbp:"", smoker:false, afib:false });
+function optValue(opt: SelectOption): string {
+  return typeof opt === "string" ? opt : opt.value;
+}
+function optLabel(opt: SelectOption): string {
+  return typeof opt === "string" ? opt : opt.label;
+}
+function labelForValue(options: SelectOption[], value: string | undefined) {
+  if (!options?.length) return "";
+  const hit = options.find((o) => optValue(o) === value);
+  return hit ? optLabel(hit) : optLabel(options[0]);
+}
 
-  const submitHF = async () => {
-    await hf.run(()=>postJSON<RiskResult>("/api/risk/heart-failure", {
-      age:+hfForm.age, sex:hfForm.sex, systolic_bp:+hfForm.sbp, heart_rate:+hfForm.hr, bmi:+hfForm.bmi
-    }));
-    if (hf.result) onResult(hf.result);
-  };
-  const submitDM = async () => {
-    await dm.run(()=>postJSON<RiskResult>("/api/risk/diabetes", {
-      age:+dmForm.age, bmi:+dmForm.bmi, fasting_glucose:+dmForm.glu, systolic_bp:+dmForm.sbp
-    }));
-    if (dm.result) onResult(dm.result);
-  };
-  const submitST = async () => {
-    await st.run(()=>postJSON<RiskResult>("/api/risk/stroke", {
-      age:+stForm.age, sex:stForm.sex, systolic_bp:+stForm.sbp, smoker:!!stForm.smoker, afib:!!stForm.afib
-    }));
-    if (st.result) onResult(st.result);
-  };
+function ScrollHint({ text }: { text: string }) {
+  return (
+    <div className="micro-scroll field-hint" title={text}>
+      <span className="scrollpad">{text}</span>
+    </div>
+  );
+}
 
-  const box = "space-y-2 p-3 border rounded-2xl";
-  const input = "px-3 py-2 rounded-xl border w-full";
+function FieldInput({
+  f,
+  value,
+  onChange,
+}: {
+  f: Field;
+  value: any;
+  onChange: (v: any) => void;
+}) {
+  const base = "w-full min-w-0 input py-2 text-sm";
+
+  if (f.type === "number") {
+    return (
+      <div className="min-w-0">
+        <input
+          className={base}
+          inputMode="decimal"
+          placeholder=""
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+          title={f.label}
+        />
+        <ScrollHint text={f.label} />
+      </div>
+    );
+  }
+
+  if (f.type === "select") {
+    const shown = labelForValue(f.options, value);
+    return (
+      <div className="min-w-0">
+        <select
+          className={base}
+          value={value ?? (f.options.length ? optValue(f.options[0]) : "")}
+          onChange={(e) => onChange(e.target.value)}
+          title={shown}
+        >
+          {f.options.map((o) => {
+            const v = optValue(o);
+            const l = optLabel(o);
+            return (
+              <option key={v} value={v}>
+                {l}
+              </option>
+            );
+          })}
+        </select>
+        <ScrollHint text={shown} />
+      </div>
+    );
+  }
 
   return (
-    <div className="p-4 border rounded-2xl space-y-4">
-      <div className="text-sm font-semibold">Risk Scores</div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className={box}>
-          <div className="text-sm font-medium">Heart Failure</div>
-          <div className="grid grid-cols-2 gap-2">
-            <input className={input} placeholder="Age" value={hfForm.age} onChange={e=>setHF({...hfForm, age:e.target.value})}/>
-            <select className={input} value={hfForm.sex} onChange={e=>setHF({...hfForm, sex:e.target.value})}><option>M</option><option>F</option></select>
-            <input className={input} placeholder="SBP" value={hfForm.sbp} onChange={e=>setHF({...hfForm, sbp:e.target.value})}/>
-            <input className={input} placeholder="HR" value={hfForm.hr} onChange={e=>setHF({...hfForm, hr:e.target.value})}/>
-            <input className={input} placeholder="BMI" value={hfForm.bmi} onChange={e=>setHF({...hfForm, bmi:e.target.value})}/>
-          </div>
-          <button className="w-full px-3 py-2 rounded-xl border" onClick={submitHF}>Predict</button>
-        </div>
-        <div className={box}>
-          <div className="text-sm font-medium">Diabetes</div>
-          <div className="grid grid-cols-2 gap-2">
-            <input className={input} placeholder="Age" value={dmForm.age} onChange={e=>setDM({...dmForm, age:e.target.value})}/>
-            <input className={input} placeholder="BMI" value={dmForm.bmi} onChange={e=>setDM({...dmForm, bmi:e.target.value})}/>
-            <input className={input} placeholder="Glucose" value={dmForm.glu} onChange={e=>setDM({...dmForm, glu:e.target.value})}/>
-            <input className={input} placeholder="SBP" value={dmForm.sbp} onChange={e=>setDM({...dmForm, sbp:e.target.value})}/>
-          </div>
-          <button className="w-full px-3 py-2 rounded-xl border" onClick={submitDM}>Predict</button>
-        </div>
-        <div className={box}>
-          <div className="text-sm font-medium">Stroke</div>
-          <div className="grid grid-cols-2 gap-2">
-            <input className={input} placeholder="Age" value={stForm.age} onChange={e=>setST({...stForm, age:e.target.value})}/>
-            <select className={input} value={stForm.sex} onChange={e=>setST({...stForm, sex:e.target.value})}><option>M</option><option>F</option></select>
-            <input className={input} placeholder="SBP" value={stForm.sbp} onChange={e=>setST({...stForm, sbp:e.target.value})}/>
-            <label className="flex items-center gap-2 col-span-2 text-sm"><input type="checkbox" checked={stForm.smoker} onChange={e=>setST({...stForm, smoker:e.target.checked})}/> Smoker</label>
-            <label className="flex items-center gap-2 col-span-2 text-sm"><input type="checkbox" checked={stForm.afib} onChange={e=>setST({...stForm, afib:e.target.checked})}/> AFib</label>
-          </div>
-          <button className="w-full px-3 py-2 rounded-xl border" onClick={submitST}>Predict</button>
-        </div>
+    <label className="col-span-1 sm:col-span-2 flex items-center gap-2 text-sm">
+      <input
+        type="checkbox"
+        checked={!!value}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-4 w-4"
+      />
+      <span>{f.label}</span>
+    </label>
+  );
+}
+
+function RiskBox({
+  schema,
+  onResult,
+}: {
+  schema: RiskSchema;
+  onResult: (r: RiskResult) => void;
+}) {
+  const up = useUploader<RiskResult>();
+
+  const initial: Payload = useMemo(() => {
+    return Object.fromEntries(
+      schema.fields.map((f) => {
+        if (f.type === "select") {
+          const first = (f.options as SelectOption[])[0];
+          return [f.key, first ? optValue(first) : ""];
+        }
+        if (f.type === "checkbox") return [f.key, false];
+        return [f.key, ""];
+      })
+    );
+  }, [schema]);
+
+  const [form, setForm] = useState<Payload>(initial);
+  const set = (k: string, v: any) => setForm((prev) => ({ ...prev, [k]: v }));
+
+  const submit = async () => {
+    const payload: Payload = {};
+    for (const f of schema.fields) {
+      const v = form[f.key];
+      payload[f.key] = f.type === "number" ? (v === "" ? null : +v) : v;
+    }
+    const data = await up.run(() => postJSON<RiskResult>(schema.endpoint, payload));
+    if (data) onResult(data);
+  };
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+      <div className="mb-2 text-sm font-medium">{schema.title}</div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {schema.fields.map((f) => (
+          <FieldInput key={f.key} f={f} value={form[f.key]} onChange={(v) => set(f.key, v)} />
+        ))}
+
+        <button
+          className="btn btn-ghost btn-block btn-wrap sm:col-span-2"
+          onClick={submit}
+          disabled={up.loading}
+        >
+          <span className="btn-label">{up.loading ? "Predicting…" : "Predict"}</span>
+        </button>
       </div>
+
+      {!!up.progress && (
+        <div className="progress mt-2">
+          <div style={{ width: `${up.progress}%` }} />
+        </div>
+      )}
+      {up.error && <div className="mt-1 text-sm text-rose-300">{up.error}</div>}
+    </div>
+  );
+}
+
+export function RiskPanel({ onResult }: { onResult: (r: RiskResult) => void }) {
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <RiskBox schema={HEART_FAILURE_SCHEMA} onResult={onResult} />
+      <RiskBox schema={DIABETES_SCHEMA} onResult={onResult} />
+      <RiskBox schema={STROKE_SCHEMA} onResult={onResult} />
     </div>
   );
 }
