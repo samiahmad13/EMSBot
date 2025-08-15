@@ -28,11 +28,11 @@ export default function Page() {
       </header>
 
       {/* Imaging*/}
-      <section className="mx-auto w-full max-w-5xl">
+      <section className="mx-auto mt-6 w-full max-w-5xl">
         <div className="card p-4">
-          <div className="section-title"><Image size={16}/> Imaging</div>
+          <div className="section-title"><Image size={16} /> Imaging</div>
           <div className="mt-4">
-            <ImagingCard onResult={(r)=>setImagingRes(r)} />
+            <ImagingCard onResult={(r) => setImagingRes(r)} />
           </div>
         </div>
       </section>

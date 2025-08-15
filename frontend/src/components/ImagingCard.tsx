@@ -1,70 +1,131 @@
 "use client";
 import { useState } from "react";
-import { postForm } from "@/src/services/api";
 import { useUploader } from "@/src/hooks/useUploader";
+import { postForm } from "@/src/services/api";
 import type { VisionResult } from "@/src/types/model";
-import { Image as ImageIcon, Syringe, Loader2 } from "lucide-react";
 import { FilePicker } from "@/src/components/FilePicker";
 
-export function ImagingCard({ onResult }: { onResult: (r: VisionResult) => void }) {
-  const [tab, setTab] = useState<"cxr" | "burn">("cxr");
-  const [file, setFile] = useState<File | null>(null);
-  const up = useUploader<VisionResult>();
+export function ImagingCard({
+  onResult,
+}: {
+  onResult: (r: VisionResult) => void;
+}) {
+  const [cxr, setCXR] = useState<File | null>(null);
+  const [burn, setBurn] = useState<File | null>(null);
+  const [wound, setWound] = useState<File | null>(null);
 
-  const endpoints = {
-    cxr: "/api/vision/cxr-classify",
-    burn: "/api/vision/burn-classify",
-  } as const;
+  const cxrUp = useUploader<VisionResult>();
+  const burnUp = useUploader<VisionResult>();
+  const woundUp = useUploader<VisionResult>();
 
-  const submit = async () => {
-    if (!file) return;
+  const send = async (file: File, kind: "cxr" | "burn" | "wound") => {
     const fd = new FormData();
     fd.append("image", file);
-    const data = await up.run(() => postForm<VisionResult>(endpoints[tab], fd));
-    if (data) onResult(data);
+
+    if (kind === "cxr") {
+      const data = await cxrUp.run(() =>
+        postForm<VisionResult>("/api/vision/cxr-classify", fd)
+      );
+      if (data) onResult(data);
+    } else if (kind === "burn") {
+      const data = await burnUp.run(() =>
+        postForm<VisionResult>("/api/vision/burn-classify", fd)
+      );
+      if (data) onResult(data);
+    } else {
+      const data = await woundUp.run(() =>
+        postForm<VisionResult>("/api/vision/wound-segment", fd)
+      );
+      if (data) onResult(data);
+    }
   };
 
-  const tabBtn = (k: "cxr" | "burn", label: string) => (
-    <button
-      key={k}
-      onClick={() => setTab(k)}
-      className={`btn btn-sm ${tab === k ? "btn-primary" : "btn-ghost"} btn-wrap flex items-center justify-center`}
-      title={label}
-    >
-      <span className="btn-label leading-none">{label}</span>
-    </button>
+  const Box = ({
+    title,
+    children,
+  }: {
+    title: string;
+    children: React.ReactNode;
+  }) => (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+      <div className="mb-2 text-sm font-medium">{title}</div>
+      {children}
+    </div>
+  );
+
+  const bar = (v: number) => (
+    <div className="progress mt-2">
+      <div style={{ width: `${v}%` }} />
+    </div>
   );
 
   return (
-    <div className="space-y-3">
-      <div className="pillbar no-scrollbar">
-        {tabBtn("cxr", "Chest X-Ray")}
-        {tabBtn("burn", "Burn Wound Image")}
-      </div>
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      {/* Chest X-Ray */}
+      <Box title="Chest X-Ray">
+        <FilePicker
+          accept="image/*"
+          file={cxr}
+          onSelect={setCXR}
+          buttonLabel="Choose image"
+          compact
+        />
+        <button
+          className="btn btn-ghost btn-block btn-wrap mt-2"
+          onClick={() => cxr && send(cxr, "cxr")}
+          disabled={cxrUp.loading}
+        >
+          {cxrUp.loading ? "Analyzing..." : "Analyze"}
+        </button>
+        {!!cxrUp.progress && bar(cxrUp.progress)}
+        {cxrUp.error && (
+          <div className="mt-1 text-rose-300 text-sm">{cxrUp.error}</div>
+        )}
+      </Box>
 
-      <FilePicker
-        accept="image/*"
-        file={file}
-        onSelect={setFile}
-        buttonLabel="Choose image"
-        compact
-      />
+      {/* Burn Wound Image */}
+      <Box title="Burn Wound">
+        <FilePicker
+          accept="image/*"
+          file={burn}
+          onSelect={setBurn}
+          buttonLabel="Choose image"
+          compact
+        />
+        <button
+          className="btn btn-ghost btn-block btn-wrap mt-2"
+          onClick={() => burn && send(burn, "burn")}
+          disabled={burnUp.loading}
+        >
+          {burnUp.loading ? "Analyzing..." : "Analyze"}
+        </button>
+        {!!burnUp.progress && bar(burnUp.progress)}
+        {burnUp.error && (
+          <div className="mt-1 text-rose-300 text-sm">{burnUp.error}</div>
+        )}
+      </Box>
 
-      <button
-        onClick={submit}
-        disabled={!file || up.loading}
-        className="btn btn-ghost btn-block btn-wrap mt-2"
-      >
-        <span className="btn-label">{up.loading ? "Running…" : "Analyze"}</span>
-      </button>
-
-      {!!up.progress && (
-        <div className="progress">
-          <div style={{ width: `${up.progress}%` }} />
-        </div>
-      )}
-      {up.error && <div className="text-rose-300 text-sm">{up.error}</div>}
-
+      {/* Wound Segmentation */}
+      <Box title="Wound Segmentation">
+        <FilePicker
+          accept="image/*"
+          file={wound}
+          onSelect={setWound}
+          buttonLabel="Choose image"
+          compact
+        />
+        <button
+          className="btn btn-ghost btn-block btn-wrap mt-2"
+          onClick={() => wound && send(wound, "wound")}
+          disabled={woundUp.loading}
+        >
+          {woundUp.loading ? "Analyzing..." : "Analyze"}
+        </button>
+        {!!woundUp.progress && bar(woundUp.progress)}
+        {woundUp.error && (
+          <div className="mt-1 text-rose-300 text-sm">{woundUp.error}</div>
+        )}
+      </Box>
     </div>
   );
 }

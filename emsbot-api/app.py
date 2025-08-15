@@ -69,6 +69,8 @@ HEART_AUDIO_LABELS = [
     "Artifact",
 ]
 
+WOUND_LABELS = ["Wound", "Background"]
+
 
 def meta():
     return {"model": "demo", "latency_ms": int(random.uniform(40, 160))}
@@ -97,6 +99,21 @@ async def burn_classify(image: UploadFile = File(...)):
 @app.post("/api/vision/cxr-classify")
 async def cxr_classify(image: UploadFile = File(...)):
     probs = rand_probs(CXR_LABELS)
+    pred = max(probs, key=probs.get)
+    return {
+        "prediction": pred,
+        "confidence_pct": round(probs[pred] * 100, 2),
+        "probs": probs,
+        "meta": meta(),
+    }
+
+
+@app.post("/api/vision/wound-segment")
+async def wound_segment(image: UploadFile = File(...)):
+    data = await image.read()
+    size_kb = max(1, len(data) // 1024)
+    wound_p = min(0.9, max(0.05, (size_kb % 67) / 100))
+    probs = {"Wound": wound_p, "Background": 1.0 - wound_p}
     pred = max(probs, key=probs.get)
     return {
         "prediction": pred,

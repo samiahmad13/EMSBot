@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useUploader } from "@/src/hooks/useUploader";
 import { postForm } from "@/src/services/api";
 import type { SignalResult, AudioResult } from "@/src/types/model";
-import { Waves, HeartPulse, Loader2 } from "lucide-react";
 import { FilePicker } from "@/src/components/FilePicker";
 
 export function AudioSignalsCard({
