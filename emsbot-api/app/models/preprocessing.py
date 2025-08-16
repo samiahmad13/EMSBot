@@ -2,7 +2,6 @@ import io
 import os
 import json
 from typing import Any, Dict, List
-
 import numpy as np
 import soundfile as sf
 import librosa
@@ -12,8 +11,8 @@ from PIL import Image
 # Vision
 
 
-def load_image_224_rgb(raw: bytes, size=(224, 224)) -> np.ndarray:
-    """Bytes -> (1, H, W, 3) float32 in [0,1]."""
+def load_image_rgb(raw: bytes, size: tuple[int, int]) -> np.ndarray:
+    """Bytes -> (1, H, W, 3) float32 in [0,1], resized to `size`."""
     img = Image.open(io.BytesIO(raw)).convert("RGB").resize(size)
     x = (np.array(img, dtype=np.float32) / 255.0)[None, ...]
     return x
@@ -22,17 +21,21 @@ def load_image_224_rgb(raw: bytes, size=(224, 224)) -> np.ndarray:
 # Audio
 
 
-def load_audio_melspec(raw: bytes, sr: int = 16000, n_mels: int = 64) -> np.ndarray:
-    """Bytes -> (1, n_mels, T, 1) normalized mel-spectrogram."""
+def load_audio_vector_52(raw: bytes, sr: int = 16000) -> np.ndarray:
+    """
+    Bytes -> (1, 1, 52) float32
+    Extract 52 MFCCs, aggregate over time (mean), and shape for models that expect (None, 1, 52).
+    """
     y, in_sr = sf.read(io.BytesIO(raw), dtype="float32", always_2d=False)
     if in_sr != sr:
         y = librosa.resample(y, orig_sr=in_sr, target_sr=sr)
     if y.ndim > 1:
         y = np.mean(y, axis=1)
-    S = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=n_mels)
-    S_db = librosa.power_to_db(S, ref=np.max)
-    S_db = (S_db + 80.0) / 80.0
-    return S_db[None, ..., None]
+
+    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=52)
+    vec = np.mean(mfcc, axis=1).astype(np.float32)
+
+    return vec[None, None, :]
 
 
 # Helpers
@@ -44,7 +47,6 @@ def _load_stats(json_path: str) -> Dict[str, Dict[str, float]] | None:
         if os.path.exists(json_path):
             with open(json_path, "r") as f:
                 obj = json.load(f)
-            # normalize keys to str
             return {
                 str(k): {"mean": float(v["mean"]), "std": float(v["std"])}
                 for k, v in obj.items()
@@ -55,6 +57,7 @@ def _load_stats(json_path: str) -> Dict[str, Dict[str, float]] | None:
 
 
 def _z(val: Any, mu: float, sd: float) -> float:
+    """Standardize a value to z-score form."""
     try:
         x = float(val)
     except Exception:
@@ -70,7 +73,6 @@ def _one_hot(v: Any, levels: List[str]) -> List[float]:
 
 # Heart (UCI heart.csv)
 HEART_COLS: List[str] = [
-    # numerics (6)
     "Age",
     "RestingBP",
     "Cholesterol",
@@ -100,7 +102,7 @@ _HEART_STATS = _load_stats(
 
 
 def preprocess_heart_failure(payload: Dict[str, Any]) -> np.ndarray:
-    """Return (1, 20) vector matching training order; apply per-column z-score if stats exist."""
+    """Return (1, 20) vector matching training order; apply per-column z-score"""
     nums = [
         payload.get("Age", 0),
         payload.get("RestingBP", 0),
@@ -137,7 +139,7 @@ def preprocess_heart_failure(payload: Dict[str, Any]) -> np.ndarray:
                 else float(v) if str(v).replace(".", "", 1).isdigit() else float(v)
             )
             for v in vals
-        ]  # best-effort cast
+        ]
 
     return np.array([vec], dtype=np.float32)
 

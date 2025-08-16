@@ -73,7 +73,6 @@ def meta() -> dict:
 
 
 def _sigmoid(x: float) -> float:
-    # numerically stable
     if x >= 0:
         z = np.exp(-x)
         return float(1 / (1 + z))
@@ -97,24 +96,19 @@ def predict_prob(model, row: np.ndarray) -> float:
 
     if vec.size == 1:
         v = vec[0]
-        # if already a prob
         if 0.0 <= v <= 1.0:
             p_pos = float(v)
         else:
-            # assume logit
             p_pos = _sigmoid(v)
         return max(0.0, min(1.0, p_pos))
 
-    # softmax for 2+ values (robust to logits or already close to probs)
     ex = np.exp(vec - np.max(vec))
     p = ex / np.clip(np.sum(ex), 1e-9, None)
 
     if vec.size == 2:
-        # convention: index 0 = negative, index 1 = positive
         p_pos = float(p[1])
         return max(0.0, min(1.0, p_pos))
 
-    # multiclass: use most confident class prob as 'risk-like' score
     return float(np.max(p))
 
 

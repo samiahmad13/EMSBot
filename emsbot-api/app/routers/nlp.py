@@ -1,56 +1,162 @@
-from fastapi import APIRouter, HTTPException
-import numpy as np, os, time, tensorflow as tf
-from tensorflow import keras  # pylint: disable=no-name-in-module
-from typing import Literal
+from typing import Any, Dict, List, Optional
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form
+from pydantic import BaseModel
+import numpy as np, time, json, os
+
 from ..models.loader import load_tf_model, artifacts_path
-from ..schemas.base import TextClassifyOut
 
 router = APIRouter(prefix="/api/nlp", tags=["nlp"])
 
-DIAG_MODEL = load_tf_model(artifacts_path("text_diagnosis"))
+DX_MODEL = load_tf_model(artifacts_path("text_diagnosis"))
 TX_MODEL = load_tf_model(artifacts_path("text_treatment"))
 
-DIAG_CLASSES = os.getenv("DIAG_CLASSES", "Negative,Uncertain,Positive").split(",")
-TX_CLASSES = os.getenv("TX_CLASSES", "NotRecommended,Consider,Recommended").split(",")
+
+DX_LABELS: List[str] = [
+    "Infectious",
+    "Mental",
+    "Autism Spectrum",
+    "Prevention/Good Health",
+    "Cardiac/Circulatory",
+    "OB-Gyn/ Pregnancy",
+    "Digestive System/ Gastrointestinal",
+    "Orthopedic/ Musculoskeletal",
+    "Central Nervous System/ Neuromuscular",
+    "Endocrine/ Metabolic",
+    "Pediatrics",
+    "Chronic Pain",
+    "Respiratory System",
+    "Cancer",
+    "Morbid Obesity",
+    "Ears, Nose, Throat",
+    "Post Surgical Complication",
+    "Immunologic",
+    "Skin",
+    "Foot",
+    "Dental",
+    "Blood Related",
+    "Genetic",
+    "Genitourinary/ Kidney",
+    "Vision",
+    "Trauma/Injuries",
+    "Organ Failure",
+    "Alcohol and Drug Addiction",
+]
+TX_LABELS: List[str] = [
+    "Pharmacy/Prescription Drugs",
+    "Mental Health Treatment",
+    "Autism Related Treatment",
+    "Diagnostic Imaging, Screening and Testing",
+    "Cardio Vascular",
+    "Durable Medical Equipment",
+    "Diagnostic/Physician Evaluation",
+    "Orthopedic",
+    "Emergency/Urgent Care",
+    "General Surgery",
+    "Acute Medical Services - Outpatient",
+    "Pain Management",
+    "Cancer Treatment",
+    "Reconstructive/Plastic Surgery",
+    "Rehabilitation Services - Skilled Nursing Facility - Inpatient",
+    "Special Procedure",
+    "Electrical/ Thermal/ Radiofreq. Interventions",
+    "Alternative Treatment",
+    "OB/GYN Procedures",
+    "Neurosugery",
+    "Dental/Orthodontic",
+    "Home Health Care",
+    "Acute Medical Services - Inpatient",
+    "Ear, Nose and Throat Procedures",
+    "Rehabilitation Services - Outpatient",
+    "Vision",
+    "Urology",
+    "Preventive Health Screening",
+    "Chiropractic",
+    "Ophthalmology",
+]
 
 
-def meta() -> dict:
-    return {"ts": int(time.time()), "engine": "tensorflow"}
+class TextIn(BaseModel):
+    text: str
 
 
-def classify_text(model: keras.Model, text: str, classes: list[str]):
-    x = tf.constant([text])
-    y = model(x) if hasattr(model, "__call__") else model.predict(x)
-    if hasattr(y, "numpy"):
-        y = y.numpy()
-    vec = np.array(y).reshape(-1).astype(float)
-    if vec.size == 1 and len(classes) == 2:
-        vec = np.array([1.0 - float(vec[0]), float(vec[0])], dtype=float)
-    ex = np.exp(vec - np.max(vec))
-    p = ex / np.clip(np.sum(ex), 1e-9, None)
-    idx = int(np.argmax(p[: len(classes)]))
-    return classes[idx], {c: float(p[i]) for i, c in enumerate(classes[: len(p)])}
+def _meta() -> Dict[str, Any]:
+    return {"ts": int(time.time()), "engine": "tensorflow.keras"}
 
 
-@router.post("/report", response_model=TextClassifyOut)
-def report(body: dict):
+def _softmax(vec: np.ndarray) -> np.ndarray:
+    v = np.asarray(vec, dtype=float).reshape(-1)
+    ex = np.exp(v - np.max(v))
+    denom = np.clip(np.sum(ex), 1e-9, None)
+    return ex / denom
+
+
+def _predict_text(model, text: str) -> np.ndarray:
+    try:
+        y = model.predict([text])
+        return np.array(y).reshape(-1)
+    except Exception:
+        try:
+            y = model.predict(np.array([text], dtype=object))
+            return np.array(y).reshape(-1)
+        except Exception as e:
+            raise RuntimeError(f"text inference failed: {e}")
+
+
+def _map_probs(vec: np.ndarray, labels: List[str]) -> Dict[str, float]:
+    p = _softmax(vec)
+    if labels and len(labels) == len(p):
+        return {labels[i]: float(p[i]) for i in range(len(p))}
+    return {f"class_{i}": float(p[i]) for i in range(len(p))}
+
+
+def _get_text(text_form: Optional[str], body: Optional[TextIn]) -> str:
     """
-    Expects: { "task": "diagnosis" | "treatment", "text": "..." }
-    Returns string 'result' so the current frontend continues to work,
-    plus prediction/probs/meta for transparency.
+    Accept text from either multipart/form-data (Form) or JSON body.
     """
-    task = body.get("task")
-    text = (body.get("text") or "").strip()
-    if task not in {"diagnosis", "treatment"}:
-        raise HTTPException(400, "task must be 'diagnosis' or 'treatment'")
-    if not text:
-        raise HTTPException(400, "text is required")
+    if text_form is not None:
+        return text_form
+    if body is not None and isinstance(body, TextIn) and body.text:
+        return body.text
+    raise HTTPException(status_code=400, detail="Missing 'text'")
 
-    if task == "diagnosis":
-        label, probs = classify_text(DIAG_MODEL, text, DIAG_CLASSES)
-        summary = f"[DIAGNOSIS] Predicted: {label}"
-    else:
-        label, probs = classify_text(TX_MODEL, text, TX_CLASSES)
-        summary = f"[TREATMENT] Predicted: {label}"
 
-    return {"result": summary, "prediction": label, "probs": probs, "meta": meta()}
+@router.post("/diagnosis")
+def nlp_diagnosis(
+    text: Optional[str] = Form(None),
+    body: Optional[TextIn] = None,
+):
+    try:
+        content = _get_text(text, body)
+        vec = _predict_text(DX_MODEL, content)
+        probs = _map_probs(vec, DX_LABELS)
+        pred = max(probs.items(), key=lambda kv: kv[1])[0]
+        return {
+            "task": "diagnosis",
+            "prediction": pred,
+            "probs": probs,
+            "diagnoses": [pred],
+            "meta": _meta(),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/treatment")
+def nlp_treatment(
+    text: Optional[str] = Form(None),
+    body: Optional[TextIn] = None,
+):
+    try:
+        content = _get_text(text, body)
+        vec = _predict_text(TX_MODEL, content)
+        probs = _map_probs(vec, TX_LABELS)
+        pred = max(probs.items(), key=lambda kv: kv[1])[0]
+        return {
+            "task": "treatment",
+            "prediction": pred,
+            "probs": probs,
+            "medications": [pred],
+            "meta": _meta(),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
